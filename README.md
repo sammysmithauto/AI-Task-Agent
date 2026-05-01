@@ -30,6 +30,7 @@ Modern React Interface: A beautiful, dark-mode-ready UI built with React and Tai
 
 
 📋 Prerequisites & Requirements
+
 Before you install the script, ensure you have the following ready:
 
 A Standard Google Account: You need access to Google Tasks and Google Apps Script.
@@ -37,6 +38,7 @@ A Standard Google Account: You need access to Google Tasks and Google Apps Scrip
 A Free Google Gemini API Key: Get one instantly from Google AI Studio.
 
 🚀 Installation & Setup Guide
+
 Step 1: Create the Project & Add the Code
 Go to script.google.com and click New Project.
 
@@ -86,6 +88,7 @@ Click Deploy. (Note: Google will ask you to authorize the app to access your Tas
 Copy the Web app URL. This is the link you will use to open your Agent!
 
 💻 How to Use It
+
 1. Initialize Your Workspace
 Open your Web App URL. Navigate to the Settings tab and click Setup Workspace. The script will automatically build your default category lists inside your Google Tasks app.
 
