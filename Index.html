@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- 
+    AI Task Agent - Frontend Interface
+    Designed & Built by Samuel Smith
+    Open Source: MIT License
+  -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -21,7 +26,7 @@
     function App() {
       const [tab, setTab] = useState('dashboard');
       const [isDark, setIsDark] = useState(false);
-      const [stats, setStats] = useState({ active: false, lastSync: 'Never' });
+      const [stats, setStats] = useState({ active: false, lastSync: 'Never', inputList: 'Brain Dump', country: 'GB' });
       const [logs, setLogs] = useState([{ time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), text: 'System Online.', type: 'info' }]);
       const [loading, setLoading] = useState(false);
 
@@ -36,120 +41,125 @@
       const addLog = (text, type = 'info') => { setLogs(prev => [...prev, { time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}), text, type }]); };
       const refreshStats = () => { google.script.run.withSuccessHandler(data => setStats(data)).getSystemStats(); };
 
+      const formatLocalTime = (isoStr) => {
+        if (!isoStr || isoStr === 'Never') return 'Never';
+        try {
+          return new Date(isoStr).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).toUpperCase();
+        } catch (e) { return isoStr; }
+      };
+
       const executeAction = (functionName, startMessage) => {
-        if (functionName === 'stopAgent') {
-          addLog("Aborting...", "error");
-          google.script.run.stopAgent();
-          return;
-        }
+        if (functionName === 'stopAgent') { addLog("Aborting...", "error"); google.script.run.stopAgent(); return; }
         if (loading) return;
         setLoading(true);
         addLog(startMessage, 'info');
         google.script.run.withSuccessHandler(res => {
-            if (res.logs) res.logs.forEach(l => addLog(l, 'success'));
+            if (res.logs) res.logs.forEach(l => addLog(l, l.includes('WARNING') ? 'warning' : 'success'));
             addLog(res.msg || res, 'info');
             setLoading(false); refreshStats();
           }).withFailureHandler(err => { addLog("Error: " + err.message, 'error'); setLoading(false); })[functionName]();
       };
 
+      const saveSettings = (list, country) => {
+        google.script.run.withSuccessHandler(() => { addLog("Settings Saved", "success"); refreshStats(); }).updateGlobalSettings(list, country);
+      };
+
       return (
-        <div className="max-w-2xl mx-auto space-y-8 mt-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 pb-1">AI Task Agent</h1>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Automate Your Workspace</p>
+        <div className="max-w-2xl mx-auto space-y-8 mt-4 flex flex-col min-h-[90vh]">
+          <div className="flex-grow space-y-8">
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 pb-1">AI Task Agent</h1>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Automate Your Workspace</p>
+              </div>
+              <button onClick={toggleTheme} className="p-3 bg-white dark:bg-darkcard rounded-full shadow-sm border border-slate-200 dark:border-slate-800 transition-all text-xl">{isDark ? '☀️' : '🌙'}</button>
             </div>
-            <button onClick={toggleTheme} className="p-3 bg-white dark:bg-darkcard rounded-full shadow-sm border border-slate-200 dark:border-slate-800 transition-all text-xl">{isDark ? '☀️' : '🌙'}</button>
-          </div>
 
-          <div className="flex space-x-6 border-b border-slate-200 dark:border-slate-800 text-sm font-semibold overflow-x-auto pb-1">
-            <button onClick={() => setTab('dashboard')} className={`pb-3 border-b-2 whitespace-nowrap transition-colors ${tab === 'dashboard' ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500'}`}>Agent Console</button>
-            <button onClick={() => setTab('onboarding')} className={`pb-3 border-b-2 whitespace-nowrap transition-colors ${tab === 'onboarding' ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500'}`}>Getting Started</button>
-            <button onClick={() => setTab('setup')} className={`pb-3 border-b-2 whitespace-nowrap transition-colors ${tab === 'setup' ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500'}`}>Settings</button>
-          </div>
+            <div className="flex space-x-6 border-b border-slate-200 dark:border-slate-800 text-sm font-semibold overflow-x-auto pb-1">
+              <button onClick={() => setTab('dashboard')} className={`pb-3 border-b-2 whitespace-nowrap transition-colors ${tab === 'dashboard' ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500'}`}>Agent Console</button>
+              <button onClick={() => setTab('onboarding')} className={`pb-3 border-b-2 whitespace-nowrap transition-colors ${tab === 'onboarding' ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500'}`}>Getting Started</button>
+              <button onClick={() => setTab('setup')} className={`pb-3 border-b-2 whitespace-nowrap transition-colors ${tab === 'setup' ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400' : 'border-transparent text-slate-500'}`}>Settings</button>
+            </div>
 
-          {tab === 'dashboard' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
-                <h2 className="text-xl font-bold mb-2">Execute Agent</h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">Runs the Triage Engine: Sorter will read your Brain Dump, parse dates, and organize your categories.</p>
-                {!loading ? (
-                  <button onClick={() => executeAction('runAiAgent', 'Launching Agent...')} className="w-full py-4 rounded-xl font-bold shadow-md bg-blue-600 hover:bg-blue-700 text-white active:scale-95 transition-all">Run</button>
-                ) : (
-                  <button onClick={() => executeAction('stopAgent')} className="w-full py-4 rounded-xl font-bold shadow-md bg-red-600 hover:bg-red-700 text-white animate-pulse">STOP AGENT</button>
-                )}
+            {tab === 'dashboard' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                  <h2 className="text-xl font-bold mb-2">Execute Agent</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">Runs the Triage Engine: Sorter will read your {stats.inputList}, parse dates, and organize your categories.</p>
+                  {!loading ? (
+                    <button onClick={() => executeAction('runAiAgent', 'Launching Agent...')} className="w-full py-4 rounded-xl font-bold shadow-md bg-blue-600 hover:bg-blue-700 text-white active:scale-95 transition-all">Run</button>
+                  ) : (
+                    <button onClick={() => executeAction('stopAgent')} className="w-full py-4 rounded-xl font-bold shadow-md bg-red-600 hover:bg-red-700 text-white animate-pulse">STOP AGENT</button>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                  <div>STATUS: <span className={stats.active ? 'text-green-500' : 'text-slate-400'}>{stats.active ? '● Active' : '● Idle'}</span></div>
+                  <div>LAST SYNC: <span className="text-slate-800 dark:text-slate-200">{formatLocalTime(stats.lastSync)}</span></div>
+                </div>
+
+                <div className="bg-slate-900 rounded-2xl p-5 h-72 overflow-y-auto shadow-inner border border-slate-800">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 block border-b border-slate-800 pb-2">Activity Monitor</span>
+                  <div className="space-y-2 font-mono text-[13px]">
+                    {logs.map((log, i) => (
+                      <div key={i} className={log.type === 'warning' ? 'text-orange-400' : log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-emerald-300' : 'text-blue-300'}>
+                        <span className="text-slate-600 mr-3">[{log.time}]</span>{log.text}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
+            )}
 
-              <div className="flex justify-between items-center bg-white dark:bg-darkcard p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-500 uppercase">
-                <div>STATUS: <span className={stats.active ? 'text-green-500' : 'text-slate-400'}>{stats.active ? '● Active' : '● Idle'}</span></div>
-                <div>LAST SYNC: <span className="text-slate-800 dark:text-slate-200">{stats.lastSync}</span></div>
+            {tab === 'onboarding' && (
+              <div className="space-y-6 animate-fade-in bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                <h2 className="text-xl font-bold mb-4 italic underline uppercase">AI Task Agent: User Guide</h2>
+                <div className="space-y-6">
+                  <div><h4 className="font-bold text-blue-600">Step 1: Setup Workspace</h4><p className="text-sm text-slate-500">Go to Settings and click "Setup Workspace". This creates your lists if your app is blank.</p></div>
+                  <div><h4 className="font-bold text-blue-600">Step 2: The Brain Dump</h4><p className="text-sm text-slate-500">Open Google Tasks and throw every thought into your input list. Use natural language: "Call John next Tuesday".</p></div>
+                  <div><h4 className="font-bold text-blue-600">Step 3: Run the Agent</h4><p className="text-sm text-slate-500">Click "Run". The AI moves tasks, applies emojis, and alerts you to holidays in {stats.country}.</p></div>
+                </div>
               </div>
+            )}
 
-              <div className="bg-slate-900 rounded-2xl p-5 h-72 overflow-y-auto shadow-inner border border-slate-800">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 block border-b border-slate-800 pb-2">Activity Monitor</span>
-                <div className="space-y-2 font-mono text-[13px]">
-                  {logs.map((log, i) => (
-                    <div key={i} className={log.type === 'error' ? 'text-red-400' : log.type === 'success' ? 'text-emerald-300' : 'text-blue-300'}>
-                      <span className="text-slate-600 mr-3">[{log.time}]</span>{log.text}
+            {tab === 'setup' && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                  <h3 className="font-bold mb-4 text-lg border-b border-slate-100 pb-2 text-blue-600">Global Settings</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Input List Name</label>
+                      <input type="text" value={stats.inputList} onChange={(e) => setStats({...stats, inputList: e.target.value})} onBlur={(e) => saveSettings(e.target.value, stats.country)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm" />
                     </div>
-                  ))}
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Country Code (GB/SE/US)</label>
+                      <input type="text" value={stats.country} onChange={(e) => setStats({...stats, country: e.target.value})} onBlur={(e) => saveSettings(stats.inputList, e.target.value)} className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {tab === 'onboarding' && (
-            <div className="space-y-6 animate-fade-in bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
-              <h2 className="text-xl font-bold mb-4 italic underline uppercase">AI Task Agent: User Guide</h2>
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-bold text-blue-600 dark:text-blue-400">Step 1: Setup Workspace</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Go to Settings and click "Setup Workspace". This creates your Brain Dump and category lists if your app is currently blank.</p>
+                <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+                  <h3 className="font-bold mb-4 text-lg border-b border-slate-100 pb-2">Workspace Controls</h3>
+                  <div className="flex gap-3">
+                    <button onClick={() => executeAction('setupWorkspace', 'Configuring...')} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-sm font-bold">Setup Workspace</button>
+                    <button onClick={() => executeAction('toggleAutomation', 'Updating...')} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-sm font-bold">{stats.active ? 'Disable Autopilot' : 'Enable Autopilot'}</button>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="font-bold text-blue-600 dark:text-blue-400">Step 2: The Brain Dump</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Open Google Tasks and throw every thought into "Brain Dump". Use natural language: <i>"Call John next Tuesday"</i> or <i>"Fix sink June 20th"</i>.</p>
-                </div>
-                <div>
-                  <h4 className="font-bold text-blue-600 dark:text-blue-400">Step 3: Run the Agent</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Click "Run". The AI moves tasks to your existing lists, applies emojis, and puts dates on your calendar.</p>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {tab === 'setup' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
-                <h3 className="font-bold mb-4 text-lg border-b border-slate-100 dark:border-slate-700 pb-2 text-blue-600 dark:text-blue-400">Configurations</h3>
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="font-semibold text-sm">Workspace Setup</h4>
-                    <p className="text-xs text-slate-500 mb-2">Builds baseline lists (Brain Dump, etc.) if your Tasks app is blank. Safe to run anytime.</p>
-                    <button onClick={() => executeAction('setupWorkspace', 'Checking Workspace...')} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-sm font-bold transition-all">Setup Workspace</button>
-                  </div>
-                  <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
-                    <h4 className="font-semibold text-sm">Autopilot Mode</h4>
-                    <p className="text-xs text-slate-500 mb-2">Runs the AI Agent silently every hour to organize your dump list.</p>
-                    <button onClick={() => executeAction('toggleAutomation', 'Updating Autopilot...')} className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-lg text-sm font-bold transition-all">{stats.active ? 'Disable Autopilot' : 'Enable Autopilot'}</button>
+                <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-red-200 dark:border-red-900/30">
+                  <div className="space-y-4">
+                    <button onClick={() => { if(confirm('Clear Memory?')) executeAction('resetAgentMemory', 'Wiping...'); }} className="w-full py-3 rounded-lg border border-slate-200 font-bold text-sm">Undo Processing (Soft Reset)</button>
+                    <button onClick={() => { if(confirm('Full Reset?')) executeAction('factoryReset', 'Resetting...'); }} className="w-full py-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-600 font-bold text-sm border border-red-200">Start Fresh (Factory Reset)</button>
                   </div>
                 </div>
               </div>
-
-              <div className="bg-white dark:bg-darkcard rounded-2xl p-6 shadow-sm border border-red-200 dark:border-red-900/30">
-                <div className="space-y-6">
-                  <div>
-                    <button onClick={() => { if(confirm('Clear memory?')) executeAction('resetAgentMemory', 'Clearing cache...'); }} className="w-full py-3 rounded-lg border border-slate-200 dark:border-slate-700 font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">Undo Processing (Soft Reset)</button>
-                    <p className="text-center text-xs text-slate-400 mt-2">Removes AI tags so tasks can be re-run.</p>
-                  </div>
-                  <div>
-                    <button onClick={() => { if(confirm('Full Wipe?')) executeAction('factoryReset', 'Executing Wipe...'); }} className="w-full py-3 rounded-lg bg-red-50 dark:bg-red-950/20 text-red-600 font-bold text-sm border border-red-200 dark:border-red-900/50 hover:bg-red-100 transition-all">Start Fresh (Factory Reset)</button>
-                    <p className="text-center text-xs text-red-400 mt-2">Disables autopilot and wipes AI memory logs.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+          
+          {/* Footer */}
+          <div className="mt-8 text-center text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-widest font-semibold pb-4">
+            Designed & Built by Samuel Smith • Open Source MIT License
+          </div>
         </div>
       );
     }
