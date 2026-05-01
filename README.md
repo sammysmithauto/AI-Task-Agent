@@ -4,13 +4,15 @@ An autonomous, LLM-powered task triage engine built natively for Google Workspac
 
 ## 📸 Screenshots
 ### Agent Console
-<img width="1189" height="997" alt="Screenshot 2026-04-30 at 20 29 39" src="https://github.com/user-attachments/assets/14aae27c-72f3-42f1-99ed-4003e795a0d0" />
+<img width="1180" height="978" alt="Screenshot 2026-05-01 at 14 58 40" src="https://github.com/user-attachments/assets/e58f27f7-9eae-49b8-b08d-1fa58ec1eea8" />
+
 
 ### User Guide
-<img width="1192" height="990" alt="Screenshot 2026-04-30 at 20 29 42" src="https://github.com/user-attachments/assets/e72aab77-199f-4228-b7a8-8102d951a1ce" />
+<img width="1182" height="983" alt="Screenshot 2026-05-01 at 14 58 47" src="https://github.com/user-attachments/assets/ae19f11a-e1b2-49b7-945d-92f23f1ae094" />
+
 
 ### Configurations
-<img width="1192" height="992" alt="Screenshot 2026-04-30 at 20 29 59" src="https://github.com/user-attachments/assets/c304446c-e3c5-4406-9232-158ed5b1e023" />
+<img width="1185" height="988" alt="Screenshot 2026-05-01 at 14 58 57" src="https://github.com/user-attachments/assets/64f0457c-7c16-4454-8ecd-48f86df95074" />
 
 
 ## 🛠️ Tech Stack
