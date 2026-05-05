@@ -1,109 +1,64 @@
-🧠⚡️ AI Task Agent (Google Workspace)
-An autonomous, LLM-powered task triage engine built natively for Google Workspace.
+# AI Task Agent 🤖📋
 
-Tired of a cluttered Google Tasks list? Do you constantly dump ideas into your phone but never get around to organizing them? This agent runs a custom React web app that transforms a messy "Brain Dump" into a prioritized, calendar-synced, and categorized workspace. It uses the Google Gemini API to analyze your raw notes, parse natural language dates, flag local holidays, and automatically sort tasks into dedicated lists.
+An intelligent, highly automated task manager built on Google Apps Script and React. Powered by the Gemini API, this agent acts as your personal project manager—reading your raw "Brain Dump", setting exact due dates, grouping related sub-tasks, and seamlessly sorting everything into your Google Tasks lists.
 
-✨ Features
-LLM-Powered Triage: Automatically reads your unstructured thoughts and categorizes them into distinct lists (e.g., Personal, Career, Car Maintenance).
+## ✨ Key Features
 
-Smart Date Parsing: Uses Gemini to read natural language (e.g., "Call John next Tuesday") and assigns exact due dates to your Google Tasks.
+*   **Intelligent Triage (The Funnel):** Throw messy, natural-language thoughts into your Brain Dump list. The AI reads the context and automatically moves them to the correct categorical list (e.g., Personal & Health, Car Maintenance, Professional & Career).
+*   **Smart Merging (Semantic Deduplication):** The AI understands context. If you write "Book car service" and later write "Call mechanic for tires", it merges them into a single Master Task and combines the details into the Notes.
+*   **Aggressive Nesting:** Automatically detects standalone tasks that belong together (e.g., "Confirm Hotel" and "Pack Sunscreen") and perfectly indents them as sub-tasks under a main parent project (e.g., "Jamaica Wedding Trip").
+*   **Infinite Loop & Recurring Task Protection:** Fully armored against Google API constraints. The agent intelligently quarantines recurring tasks to prevent infinite cloning loops without crashing the system.
+*   **Global Clean-Up Mode:** A deep-cleaning janitor mode that scans *all* your Google Tasks lists simultaneously to find hidden duplicates, merge overlapping items, and nest loose tasks.
+*   **Action Required Panel:** The AI never permanently deletes tasks on its own. Merged or redundant items are flagged and sent to a visual dashboard queue where you have the final say to "Trash It" or "Keep It."
+*   **Holiday Warnings:** Automatically checks public holidays for your specific region (US, GB, SE). If the AI schedules a task on a bank holiday, it flags it in the Activity Monitor.
+*   **Background Autopilot:** Turn Autopilot ON, and the agent will wake up every hour, silently organize your Brain Dump, and go back to sleep.
 
-Dynamic Holiday Detection: Set your specific country code (GB, SE, US, etc.) in the app, and the AI will scan official Google Calendars to warn you if a generated due date falls on a local public holiday.
+---
 
-Timezone-Aware Syncing: The backend utilizes universal ISO timestamping, ensuring the "Last Sync" and activity logs instantly adapt to your computer's local timezone.
+## 🚀 Setup & Installation
 
-Modern React Interface: A beautiful, dark-mode-ready UI built with React and Tailwind CSS that acts as your centralized command console.
+### 1. Google Workspace Setup
+1. Go to [Google Apps Script](https://script.google.com/) and create a New Project.
+2. Replace the default code in `Code.gs` with the backend engine code from this repository.
+3. Create a new HTML file named `Index.html` and paste the frontend React code into it.
 
-100% Private & Free: Runs completely inside your own Google account. No third-party servers, no subscriptions, and your data never leaves the Google ecosystem.
+### 2. API Keys & Properties
+1. Go to **Project Settings** (the gear icon on the left).
+2. Scroll down to **Script Properties** and click "Add script property".
+3. Add the following key:
+   * **Property:** `GEMINI_API_KEY`
+   * **Value:** *(Your actual Gemini API Key)*
 
-## 📸 Screenshots
-### Agent Console
-<img width="1180" height="978" alt="Screenshot 2026-05-01 at 14 58 40" src="https://github.com/user-attachments/assets/e58f27f7-9eae-49b8-b08d-1fa58ec1eea8" />
+### 3. Deployment
+1. Click **Deploy > New Deployment** in the top right.
+2. Select **Web App** as the type.
+3. Execute as: **Me**.
+4. Who has access: **Only myself**.
+5. Click **Deploy**, authorize the permissions, and open the generated Web App URL.
 
+---
 
-### User Guide
-<img width="1182" height="983" alt="Screenshot 2026-05-01 at 14 58 47" src="https://github.com/user-attachments/assets/ae19f11a-e1b2-49b7-945d-92f23f1ae094" />
+## 🛠️ How to Use
 
+1. **Initial Setup:** Open the app, navigate to the **Settings** tab, and click **Setup Workspace**. This generates your default task categories in Google Tasks.
+2. **The Brain Dump:** Open Google Tasks on your phone or desktop. Add all your messy thoughts into the "Brain Dump" list using natural language (e.g., "Call John next Tuesday about the Q3 report").
+3. **Run the Agent:** Open the AI Task Agent console and click **Run**. Watch the Activity Monitor as the AI categorizes, dates, and merges your tasks.
+4. **Direct Log Access:** Click the **"View Developer Logs ↗"** button in the Activity Monitor to jump straight into the Google Apps Script execution logs for advanced debugging.
 
-### Configurations
-<img width="1185" height="988" alt="Screenshot 2026-05-01 at 14 58 57" src="https://github.com/user-attachments/assets/64f0457c-7c16-4454-8ecd-48f86df95074" />
+---
 
+## 🛑 Troubleshooting & How the AI "Remembers"
 
-📋 Prerequisites & Requirements
+### The `[AI_PROCESSED]` Tag
+To prevent the AI from repeatedly moving and re-processing the same tasks every time you run the script, the engine silently stamps a hidden `[AI_PROCESSED]` tag into the **Notes** section of every task it touches. 
+* If a task has this tag, the AI will ignore it. 
+* *Note: If a recurring task gets stuck in your Brain Dump, the AI will quarantine it by stamping this tag on it so it doesn't cause an infinite duplication loop.*
 
-Before you install the script, ensure you have the following ready:
+### The "Soft Reset"
+If you make a mistake, or if you want the AI to re-evaluate tasks it has already organized:
+1. Go to the **Settings** tab.
+2. Click **Undo Processing (Soft Reset)**.
+3. This safely scrubs the `[AI_PROCESSED]` tag from every task in your Google Tasks without deleting the tasks themselves, allowing the AI to look at your entire workspace with fresh eyes on the next run.
 
-A Standard Google Account: You need access to Google Tasks and Google Apps Script.
-
-A Free Google Gemini API Key: Get one instantly from Google AI Studio.
-
-🚀 Installation & Setup Guide
-
-Step 1: Create the Project & Add the Code
-Go to script.google.com and click New Project.
-
-Name the project (e.g., "AI Task Agent").
-
-In the default Code.gs file, delete all existing code and paste the full backend code from Code.gs provided in this repository.
-
-Click the + icon next to "Files" in the left sidebar, select HTML, and name it exactly Index.
-
-Paste the full frontend code from Index.html into this new file.
-
-Press Cmd/Ctrl + S to save both files.
-
-Step 2: Enable Google Services
-Look at the left sidebar and click the + icon next to Services.
-
-Scroll down and find Tasks API. Click Add.
-
-Step 3: Securely Add Your Gemini API Key
-We use Google's secure Script Properties so your API key is never hardcoded into your files.
-
-Click the Project Settings icon (gear ⚙️) on the left sidebar.
-
-Scroll down to Script Properties and click Add script property.
-
-Under Property, type exactly: GEMINI_API_KEY
-
-Under Value, paste your secret key from Google AI Studio.
-
-Click Save script properties.
-
-Step 4: Deploy the Web App
-Look at the top right of the screen and click the blue Deploy button, then select New deployment.
-
-Click the gear icon ⚙️ next to "Select type" and choose Web app.
-
-Fill out the configuration:
-
-Description: Initial Release
-
-Execute as: Me (your email)
-
-Who has access: Only myself
-
-Click Deploy. (Note: Google will ask you to authorize the app to access your Tasks. Click 'Review Permissions' > choose your account > 'Advanced' > 'Go to AI Task Agent').
-
-Copy the Web app URL. This is the link you will use to open your Agent!
-
-💻 How to Use It
-
-1. Initialize Your Workspace
-Open your Web App URL. Navigate to the Settings tab and click Setup Workspace. The script will automatically build your default category lists inside your Google Tasks app.
-
-2. The "Brain Dump"
-Throughout your day, open the standard Google Tasks app on your phone or computer. Dump every thought, chore, or meeting into your "Brain Dump" list using natural language (e.g., "Renew car insurance before next Friday").
-
-3. Run the Agent
-Open your AI Task Agent Web App and click Run.
-Watch the Activity Monitor as the AI analyzes your thoughts, parses the dates, flags any country-specific holidays, and seamlessly moves your tasks into their proper categories.
-
-4. Global Configurations
-In the Settings tab, you can customize the Agent's behavior:
-
-Input List Name: Change "Brain Dump" to whatever you prefer to call your inbox.
-
-Country Code: Enter your country code (e.g., GB, SE, US) to ensure the Agent warns you about local bank holidays and red days.
-
-Soft Reset: Made a mistake? Use the Undo button to wipe the AI's memory of the last session.
+---
+*Designed & Built by Samuel Smith • Open Source MIT License*
