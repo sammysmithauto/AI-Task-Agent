@@ -104,7 +104,7 @@ Colab provides a free Python environment that is incredibly useful for safely te
 3. Add your Gemini API Key to Colab's "Secrets" tab (the key icon on the left menu) and name it `GEMINI_API_KEY`.
 4. Run the cells to instantly test new `CATEGORY GUIDELINES`, prototype new prompt rules, or experiment with the Gemini 2.5 Flash model.
 
-**Future Roadmap:** We are looking to expand this sandbox to include Productivity Analytics—Python scripts that export your completed Google Tasks and visualize where you spend your time using `pandas` and `matplotlib`. Pull requests are welcome!
+**Future Roadmap:** Expand this sandbox to include Productivity Analytics—Python scripts that export your completed Google Tasks and visualize where you spend your time using `pandas` and `matplotlib`. Pull requests are welcome!
 ---
 *Open Source MIT License*
 
