@@ -90,3 +90,13 @@ Found in the Settings tab, this will turn off Autopilot and wipe the memory tags
 
 ---
 *Open Source MIT License*
+
+
+<img width="1175" height="990" alt="Screenshot 2026-05-05 at 18 37 19" src="https://github.com/user-attachments/assets/cacc174d-737e-458e-8286-8e12cad4c34f" />
+<img width="1187" height="985" alt="Screenshot 2026-05-05 at 18 37 28" src="https://github.com/user-attachments/assets/a7928606-0b82-4657-8fc6-09c2abbda465" />
+<img width="1189" height="990" alt="Screenshot 2026-05-05 at 18 37 37" src="https://github.com/user-attachments/assets/a7595bc5-e27e-4083-998c-e7760380cc4c" />
+
+
+
+
+
