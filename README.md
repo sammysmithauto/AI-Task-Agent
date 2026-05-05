@@ -94,7 +94,7 @@ Found in the Settings tab, this will turn off Autopilot and wipe the memory tags
 
 ## 🔭 Developer Sandbox (Google Colab)
 
-While this agent runs entirely within Google Apps Script, we have included a **Google Colab** notebook (`Task_Agent_Prompt_Tester.ipynb`) in this repository for developers and power users. 
+While this agent runs entirely within Google Apps Script, I have included a **Google Colab** notebook (`Task_Agent_Prompt_Tester.ipynb`) in this repository for developers and power users. 
 
 Colab provides a free Python environment that is incredibly useful for safely testing and expanding this project without risking your live Google Tasks data.
 
