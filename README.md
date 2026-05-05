@@ -92,6 +92,19 @@ If you make a mistake, or if you want the AI to re-evaluate tasks it has already
 ### Factory Reset
 Found in the Settings tab, this will turn off Autopilot and wipe the memory tags from all your tasks. It acts as a hard system reboot.
 
+## 🔭 Developer Sandbox (Google Colab)
+
+While this agent runs entirely within Google Apps Script, we have included a **Google Colab** notebook (`Task_Agent_Prompt_Tester.ipynb`) in this repository for developers and power users. 
+
+Colab provides a free Python environment that is incredibly useful for safely testing and expanding this project without risking your live Google Tasks data.
+
+### How to use the Sandbox:
+1. Download the `Task_Agent_Prompt_Tester.ipynb` file from this repository.
+2. Go to [Google Colab](https://colab.research.google.com/) and upload the file.
+3. Add your Gemini API Key to Colab's "Secrets" tab (the key icon on the left menu) and name it `GEMINI_API_KEY`.
+4. Run the cells to instantly test new `CATEGORY GUIDELINES`, prototype new prompt rules, or experiment with the Gemini 2.5 Flash model.
+
+**Future Roadmap:** We are looking to expand this sandbox to include Productivity Analytics—Python scripts that export your completed Google Tasks and visualize where you spend your time using `pandas` and `matplotlib`. Pull requests are welcome!
 ---
 *Open Source MIT License*
 
