@@ -1,6 +1,6 @@
 # AI Task Agent 🤖📋
 
-An intelligent, highly automated task manager built on Google Apps Script and React. Powered by the Gemini 2.5 Flash model, this agent acts as your personal project manager—reading your raw "Brain Dump", setting exact due dates, grouping related sub-tasks, and seamlessly sorting everything into your Google Tasks lists.
+An intelligent, highly automated task manager built on Google Apps Script and React. Powered by the Gemini API, this agent acts as your personal project manager—reading your raw input list, setting exact due dates, grouping related sub-tasks, and seamlessly sorting everything into your Google Tasks lists.
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 
@@ -8,14 +8,14 @@ An intelligent, highly automated task manager built on Google Apps Script and Re
 
 ## ✨ Key Features
 
-*   **Intelligent Triage (The Funnel):** Throw messy, natural-language thoughts into your Brain Dump list. The AI reads the context and automatically moves them to the correct categorical list (e.g., *Personal & Health*, *Car Maintenance*, *Professional & Career*).
-*   **Smart Merging (Semantic Deduplication):** The AI understands context. If you write "Book car service" and later write "Call mechanic for tires", it merges them into a single Master Task and combines the details into the Notes.
-*   **Aggressive Nesting:** Automatically detects standalone tasks that belong together (e.g., "Confirm Hotel" and "Pack Sunscreen") and perfectly indents them as sub-tasks under a main parent project (e.g., "Jamaica Wedding Trip").
+*   **Intelligent Triage (The Funnel):** Throw messy, natural-language thoughts into your input list. The AI reads the context and automatically moves them to the correct categorical list (e.g., *Personal*, *Work*, *Home Admin*).
+*   **Smart Merging (Semantic Deduplication):** The AI understands context. If you write "Book vehicle service" and later write "Call mechanic for tires", it merges them into a single Master Task and combines the details into the Notes.
+*   **Aggressive Nesting:** Automatically detects standalone tasks that belong together (e.g., "Draft copy" and "Design assets") and perfectly indents them as sub-tasks under a main parent project (e.g., "Marketing Campaign Launch").
 *   **Infinite Loop & Recurring Task Protection:** Fully armored against Google API constraints. The agent intelligently quarantines recurring tasks to prevent infinite cloning loops without crashing the system.
 *   **Global Clean-Up Mode:** A deep-cleaning janitor mode that scans *all* your Google Tasks lists simultaneously to find hidden duplicates, merge overlapping items, and nest loose tasks.
 *   **Action Required Panel:** The AI never permanently deletes tasks on its own. Merged or redundant items are flagged and sent to a visual dashboard queue where you have the final say to "Trash It" or "Keep It."
-*   **Holiday Warnings:** Automatically checks public holidays for your specific region (US, GB, SE). If the AI schedules a task on a bank holiday, it flags it in the Activity Monitor.
-*   **Background Autopilot:** Turn Autopilot ON, and the agent will wake up every hour, silently organize your Brain Dump, and go back to sleep.
+*   **Holiday Warnings:** Automatically checks public holidays for your specific region. If the AI schedules a task on a bank holiday, it flags it in the Activity Monitor.
+*   **Background Autopilot:** Turn Autopilot ON, and the agent will wake up every hour, silently organize your workspace, and go back to sleep.
 
 ---
 
@@ -23,7 +23,7 @@ An intelligent, highly automated task manager built on Google Apps Script and Re
 
 Before you install, ensure you have the following:
 1. A **Google Account** (to use Google Tasks and Google Apps Script).
-2. A **Gemini API Key**. You can get a free API key from Google AI Studio ([Get it here](https://aistudio.google.com/)).
+2. A **Gemini API Key**. You can get a free API key from Google AI Studio.
 3. (Automated via Manifest) **Google Tasks API** and **Google Calendar API** access.
 
 ---
@@ -66,7 +66,7 @@ You will need to copy three files from this repository into your Apps Script pro
 
 ### The Daily Workflow
 1. **Initial Setup:** Open the Web App, navigate to the **Settings** tab, and click **Setup Workspace**. This generates your default task categories in Google Tasks.
-2. **The Brain Dump:** Open Google Tasks on your phone or desktop. Add all your messy thoughts into the "Brain Dump" list using natural language (e.g., "Call John next Tuesday about the Q3 report").
+2. **The Brain Dump:** Open Google Tasks on your phone or desktop. Add all your messy thoughts into your main input list using natural language (e.g., "Schedule dentist appointment for next Friday").
 3. **Run the Agent:** Open the AI Task Agent console and click **Run**. Watch the Activity Monitor as the AI categorizes, dates, and merges your tasks.
 4. **Review Flags:** If the AI merged tasks together, they will appear in the orange **Action Required** panel for you to approve ("Trash It") or decline ("Keep It").
 
@@ -77,7 +77,7 @@ You will need to copy three files from this repository into your Apps Script pro
 ### The `[AI_PROCESSED]` Tag
 To prevent the AI from repeatedly moving and re-processing the same tasks every time you run the script, the engine silently stamps a hidden `[AI_PROCESSED]` tag into the **Notes** section of every task it touches. 
 * If a task has this tag, the AI will ignore it. 
-* **Recurring Tasks:** If a recurring task gets stuck in your Brain Dump, the AI will quarantine it by stamping this tag on it so it doesn't cause an infinite duplication loop. *(Note: Always create recurring tasks directly in their permanent folders, not in the Brain Dump!)*
+* **Recurring Tasks:** If a recurring task gets stuck in your input list, the AI will quarantine it by stamping this tag on it so it doesn't cause an infinite duplication loop. *(Note: Always create recurring tasks directly in their permanent folders, not in the dump list!)*
 
 ### Undo Processing (Soft Reset)
 If you make a mistake, or if you want the AI to re-evaluate tasks it has already organized:
@@ -89,4 +89,4 @@ If you make a mistake, or if you want the AI to re-evaluate tasks it has already
 Found in the Settings tab, this will turn off Autopilot and wipe the memory tags from all your tasks. It acts as a hard system reboot.
 
 ---
-*Designed & Built by Samuel Smith • Open Source MIT License*
+*Open Source MIT License*
