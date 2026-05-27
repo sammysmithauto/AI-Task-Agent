@@ -1,331 +1,322 @@
 /**
- * AI Task Agent - Backend Engine v2.0 (Intelligent Triage)
+ * AI Task Agent - Backend Engine v2.0
  * Designed & Built by Samuel Smith
  * Open Source: MIT License
  */
 
-function doGet() {
+const DEFAULT_CATEGORIES = ["🌱 Personal & Health", "🚗 Car Maintenance", "💼 Professional & Career", "💬 Outreach & Social"];
+
+function normalizeStr(str) {
+  return (str || "").replace(/[^a-z0-9]/gi, '').toLowerCase();
+}
+
+function doGet(e) {
+  if (e.parameter.portal === 'family' && e.parameter.key === 'SecretPassword123') {
+    var tmpl = HtmlService.createTemplateFromFile('GuestIndex');
+    tmpl.guestName = e.parameter.name || 'Guest'; 
+    return tmpl.evaluate()
+      .setTitle('Shared Tasks')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME)
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+  }
   return HtmlService.createTemplateFromFile('Index').evaluate()
       .setTitle('AI Task Agent')
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
-const DEFAULT_CATEGORIES = ["Personal & Health", "Car Maintenance", "Professional & Career", "Outreach & Social", "Family & Home Admin"];
+function getAppBaseUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
+function getSystemStats() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var inputListName = props.getProperty('INPUT_LIST_NAME') || '🧠 Brain Dump';
+    var sharedListName = props.getProperty('SHARED_LIST_NAME') || '🏠 Family & Home Admin';
+    
+    var taskLists = Tasks.Tasklists.list().items || [];
+    var allListNames = taskLists.map(l => l.title); // Feed the UI dropdowns
+    var brainDumpList = taskLists.find(l => normalizeStr(l.title) === normalizeStr(inputListName));
+    
+    var brainDumpCount = 0;
+    if (brainDumpList) {
+      var items = Tasks.Tasks.list(brainDumpList.id, {showHidden: false, maxResults: 100}).items || [];
+      brainDumpCount = items.filter(t => t.status !== 'completed').length;
+    }
+
+    return { 
+      active: ScriptApp.getProjectTriggers().length > 0, 
+      lastSync: props.getProperty('LAST_SYNC') || 'Never',
+      inputList: inputListName,
+      sharedList: sharedListName,
+      allLists: allListNames,
+      country: props.getProperty('COUNTRY_CODE') || 'SE',
+      listCount: taskLists.length,
+      brainDumpCount: brainDumpCount
+    };
+  } catch (e) {
+    return { active: false, lastSync: 'Never', inputList: 'Brain Dump', sharedList: 'Shared', allLists: [], country: 'SE', listCount: 0, brainDumpCount: 0 };
+  }
+}
+
+function updateGlobalSettings(listName, country, sharedList) {
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('INPUT_LIST_NAME', listName.trim());
+  props.setProperty('COUNTRY_CODE', country.trim());
+  if (sharedList) { props.setProperty('SHARED_LIST_NAME', sharedList.trim()); }
+  return "Settings saved.";
+}
+
+function toggleAutomation(enable) {
+  ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  if (enable) { 
+    ScriptApp.newTrigger('runAiAgent').timeBased().everyHours(1).create(); 
+    return "Autopilot Enabled."; 
+  }
+  return "Autopilot Disabled.";
+}
+
+function setupWorkspace() {
+  var props = PropertiesService.getScriptProperties();
+  var inputListName = props.getProperty('INPUT_LIST_NAME') || "🧠 Brain Dump";
+  var sharedListName = props.getProperty('SHARED_LIST_NAME') || "🏠 Family & Home Admin";
+  var existingLists = Tasks.Tasklists.list().items || [];
+  var existingNames = existingLists.map(function(l) { return normalizeStr(l.title); });
+  var created = 0;
+  
+  var categoriesToCheck = [inputListName, sharedListName, ...DEFAULT_CATEGORIES];
+  categoriesToCheck.forEach(function(cat) {
+    if (existingNames.indexOf(normalizeStr(cat)) === -1) { 
+      Tasks.Tasklists.insert({title: cat.trim()}); 
+      existingNames.push(normalizeStr(cat)); 
+      created++; 
+    }
+  });
+  return "Workspace verified. " + created + " missing folders generated.";
+}
+
+function factoryReset() {
+  toggleAutomation(false);
+  PropertiesService.getScriptProperties().deleteProperty('LAST_SYNC');
+  return "Memory space purged.";
+}
+
+function getOrCreateSharedListId() {
+  var sharedListName = PropertiesService.getScriptProperties().getProperty('SHARED_LIST_NAME') || '🏠 Family & Home Admin';
+  var taskLists = Tasks.Tasklists.list().items || [];
+  var listId = taskLists.find(l => normalizeStr(l.title) === normalizeStr(sharedListName))?.id;
+  
+  if (!listId) {
+    var newList = Tasks.Tasklists.insert({title: sharedListName.trim()});
+    listId = newList.id;
+  }
+  return { id: listId, name: sharedListName };
+}
+
+function getGuestTasks() {
+  var listData = getOrCreateSharedListId();
+  var tasks = Tasks.Tasks.list(listData.id, {showHidden: true, maxResults: 100}).items || [];
+  
+  return {
+    listName: listData.name,
+    tasks: tasks.map(t => {
+      var notes = t.notes || "";
+      var addedBy = notes.includes("👤 Added by") ? notes.split("👤 Added by")[1].split("\n")[0].trim() : "Admin";
+      var completedBy = notes.includes("✅ Completed by") ? notes.split("✅ Completed by")[1].split("\n")[0].trim() : "Admin";
+      
+      return {
+        id: t.id, 
+        title: t.title, 
+        dueDate: t.due || null,
+        updated: t.updated || new Date().toISOString(),
+        addedBy: addedBy,
+        completedBy: completedBy,
+        done: t.status === 'completed'
+      };
+    })
+  };
+}
+
+function addGuestTask(title, dateStr, guestName) {
+  var listData = getOrCreateSharedListId();
+  var safeName = guestName || "Guest";
+  var newTaskObj = { title: title.trim(), notes: "👤 Added by " + safeName };
+  
+  if (dateStr && dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) { 
+    newTaskObj.due = dateStr + "T10:00:00.000Z"; 
+  }
+
+  Tasks.Tasks.insert(newTaskObj, listData.id);
+  return "Task added!";
+}
+
+function completeGuestTask(taskId, guestName) {
+  var listData = getOrCreateSharedListId();
+  try {
+    var t = Tasks.Tasks.get(listData.id, taskId);
+    t.status = 'completed';
+    var safeName = guestName || "Admin";
+    t.notes = (t.notes || "") + "\n✅ Completed by " + safeName;
+    Tasks.Tasks.update(t, listData.id, taskId);
+    return "Task completed!";
+  } catch (e) {
+    return "Error completing task.";
+  }
+}
 
 function checkHolidays(dateStr, countryCode) {
   if (!dateStr || !countryCode) return null;
-  const langMap = { 'SE': 'sv.swedish', 'GB': 'en.uk', 'US': 'en.usa', 'DE': 'de.german', 'FR': 'fr.french' };
-  const langPrefix = langMap[countryCode.toUpperCase()] || 'en.' + countryCode.toLowerCase();
-  const calendarId = langPrefix + "#holiday@group.v.calendar.google.com";
-  
-  let foundHolidays = [];
+  const langMap = { 'SE': 'sv.swedish', 'GB': 'en.uk', 'US': 'en.usa' };
+  const calendarId = (langMap[countryCode.toUpperCase()] || 'en.uk') + "#holiday@group.v.calendar.google.com";
   try {
     const cal = CalendarApp.getCalendarById(calendarId);
     if (cal) {
       const events = cal.getEventsForDay(new Date(dateStr));
-      events.forEach(e => foundHolidays.push(e.getTitle()));
+      if (events.length > 0) return events[0].getTitle();
     }
-  } catch (err) { console.log("Calendar error"); }
-  return foundHolidays.length > 0 ? foundHolidays.join(", ") : null;
+  } catch (err) {}
+  return null;
 }
 
-function runAiAgent(isGlobalMode) {
-  isGlobalMode = (isGlobalMode === true); 
+function runAiAgent() {
   var props = PropertiesService.getScriptProperties();
-  var inputListName = props.getProperty('INPUT_LIST_NAME') || "Brain Dump";
-  var countryCode = props.getProperty('COUNTRY_CODE') || "GB";
-  props.setProperty('STOP_SIGNAL', 'false');
+  var apiKey = props.getProperty('GEMINI_API_KEY');
+  var inputListName = props.getProperty('INPUT_LIST_NAME') || "🧠 Brain Dump";
+  var countryCode = props.getProperty('COUNTRY_CODE') || "SE";
+
+  if (!apiKey) return { status: "error", msg: "Missing Gemini API Key.", logs: ["❌ Aborted: Script properties are missing GEMINI_API_KEY."] };
+
+  var taskLists = Tasks.Tasklists.list().items || [];
+  var listMap = {}; 
+  taskLists.forEach(l => listMap[normalizeStr(l.title)] = l.id);
+  var inputListId = listMap[normalizeStr(inputListName)];
+
+  if (!inputListId) return { status: "error", msg: "Target sorting pool missing.", logs: ["❌ Aborted: Could not locate the baseline input container."] };
+
+  var queue = [];
+  var isGlobalMode = false;
+  var runLog = [];
   
-  try {
-    var apiKey = props.getProperty('GEMINI_API_KEY');
-    if (!apiKey) return { status: "error", msg: "Missing Gemini API Key." };
+  // UNIFIED RUN ARCHITECTURE: Check Brain Dump first
+  var inputTasks = Tasks.Tasks.list(inputListId, {showHidden: false, maxResults: 100}).items;
+  var hasUnsortedTasks = false;
+  
+  if (inputTasks) {
+    inputTasks.forEach(t => {
+      if (t.status !== 'completed' && !t.parent && (!t.notes || !t.notes.includes("[AI_PROCESSED]"))) {
+        queue.push({ id: t.id, listId: inputListId, listName: inputListName, title: t.title, notes: t.notes || "" });
+        hasUnsortedTasks = true;
+      }
+    });
+  }
 
-    var taskLists = Tasks.Tasklists.list().items || [];
-    var listMap = {}; 
-    taskLists.forEach(function(l) { listMap[l.title] = l.id; });
-    
-    var inputListId = taskLists.find(l => l.title.toLowerCase().includes(inputListName.toLowerCase()))?.id;
-    if(!inputListId) return { status: "error", msg: "Input list not found." };
-
-    var queue = [];
-    var detailLogs = [];
-    var activeTitlesInOtherLists = new Set();
-    
-    // Build a memory of all tasks currently sitting outside the Brain Dump
-    if (!isGlobalMode) {
-      taskLists.forEach(function(list) {
-        if (list.id !== inputListId) {
-          var otherTasks = Tasks.Tasks.list(list.id, {showHidden: false, maxResults: 100}).items;
-          if (otherTasks) {
-            otherTasks.forEach(function(ot) {
-              if (ot.status !== 'completed') {
-                activeTitlesInOtherLists.add(ot.title.trim().toLowerCase());
-              }
-            });
-          }
-        }
-      });
-    }
-    
-    if (isGlobalMode) {
-      taskLists.forEach(function(list) {
-        var tasks = Tasks.Tasks.list(list.id, {showHidden: false, maxResults: 100}).items;
-        if (tasks) {
-          tasks.forEach(function(t) {
-            if (t.status !== 'completed' && !t.parent && (!t.notes || t.notes.indexOf("[AI_PROCESSED]") === -1)) {
-              queue.push({ id: t.id, listId: list.id, listName: list.title, title: t.title, notes: t.notes || "" });
-            }
-          });
-        }
-      });
-    } else {
-      var tasks = Tasks.Tasks.list(inputListId, {showHidden: false, maxResults: 100}).items;
-      if (tasks) {
-        tasks.forEach(function(t) {
-          if (t.status !== 'completed' && !t.parent && (!t.notes || t.notes.indexOf("[AI_PROCESSED]") === -1)) {
-            
-            // INFINITE LOOP PROTECTION: If it's already in another list, quarantine it!
-            if (activeTitlesInOtherLists.has(t.title.trim().toLowerCase())) {
-              try {
-                t.notes = (t.notes || "") + "\n\n[AI_PROCESSED]";
-                Tasks.Tasks.update(t, inputListId, t.id);
-                detailLogs.push("🛡️ Quarantined looping/recurring task: " + t.title);
-              } catch(e){}
-            } else {
-              queue.push({ id: t.id, listId: inputListId, listName: inputListName, title: t.title, notes: t.notes || "" });
-            }
+  // If Brain Dump is empty, pivot to Deep Clean Mode
+  if (!hasUnsortedTasks) {
+    isGlobalMode = true;
+    runLog.push("ℹ️ Brain Dump is clear. Pivoting to Global Clean-Up Mode.");
+    taskLists.forEach(list => {
+      var listTasks = Tasks.Tasks.list(list.id, {showHidden: false, maxResults: 100}).items;
+      if (listTasks) {
+        listTasks.forEach(t => {
+          if (t.status !== 'completed' && !t.parent && (!t.notes || !t.notes.includes("[AI_PROCESSED]"))) {
+            queue.push({ id: t.id, listId: list.id, listName: list.title, title: t.title, notes: t.notes || "" });
           }
         });
       }
-    }
-
-    if (queue.length === 0) {
-      props.setProperty('LAST_SYNC', new Date().toISOString());
-      return { status: "success", msg: "No new tasks.", logs: detailLogs, flagged: [] };
-    }
-
-    // AI TIMEOUT PROTECTION: Cap batch at 100 tasks max per run.
-    var batch = queue.slice(0, 100);
-    var existingCategories = Object.keys(listMap).filter(k => k !== inputListName);
-    var aiResults = getAiIntelligentTriage(batch, apiKey, existingCategories, isGlobalMode);
-    
-    var processedCount = 0;
-    var flaggedItems = [];
-
-    for (var i = 0; i < aiResults.length; i++) {
-      if (props.getProperty('STOP_SIGNAL') === 'true') { detailLogs.push("🛑 Manual Stop."); break; }
-      
-      var decision = aiResults[i];
-      var original = batch.find(function(b) { return b.id === decision.id; });
-      if (!original) continue;
-
-      // SHOCK ABSORBER: Try/Catch wrapper for each individual task
-      try {
-        if (decision.action === 'flag_duplicate') {
-          flaggedItems.push({ id: original.id, listId: original.listId, title: original.title, reason: decision.flagReason });
-          continue;
-        }
-
-        if (isGlobalMode && decision.action === 'move' && !decision.newNotes && (!decision.newTitle || decision.newTitle === original.title)) continue;
-
-        // Prevent Database IDs from being used as Lists
-        if (decision.targetList && decision.targetList.match(/^[a-zA-Z0-9_-]{15,}$/)) {
-          decision.targetList = original.listName;
-        }
-
-        if (decision.targetList && !listMap[decision.targetList] && decision.targetList !== inputListName) {
-          var newList = Tasks.Tasklists.insert({title: decision.targetList});
-          listMap[decision.targetList] = newList.id;
-          detailLogs.push("📁 Created new list: [" + decision.targetList + "]");
-          Utilities.sleep(200); // API Rate Limit Protection
-        }
-
-        var targetId = listMap[decision.targetList] || original.listId;
-        
-        // STRICT DATE FORMAT VALIDATOR
-        var isValidDate = decision.dueDate && decision.dueDate.match(/^\d{4}-\d{2}-\d{2}$/);
-        var holidayWarning = isValidDate ? checkHolidays(decision.dueDate, countryCode) : null;
-        if (holidayWarning) detailLogs.push("⚠️ WARNING: " + decision.dueDate + " is " + holidayWarning);
-
-        var combinedNotes = decision.newNotes ? decision.newNotes : original.notes;
-
-        var newTaskObj = {
-          title: decision.newTitle || original.title,
-          due: isValidDate ? (decision.dueDate + "T10:00:00.000Z") : undefined,
-          notes: (combinedNotes + "\n\n[AI_PROCESSED]").trim()
-        };
-        
-        // Insert the new task
-        var newParentTask = Tasks.Tasks.insert(newTaskObj, targetId);
-        Utilities.sleep(200); // API Rate Limit Protection
-        
-        // Handle Recurring Task Deletion Safely
-        try {
-          Tasks.Tasks.remove(original.listId, original.id);
-        } catch (removeErr) {
-          var t = Tasks.Tasks.get(original.listId, original.id);
-          t.notes = (t.notes || "") + "\n\n[AI_PROCESSED]";
-          Tasks.Tasks.update(t, original.listId, original.id);
-        }
-        
-        var logMessage = "➡️ Moved to [" + decision.targetList + "] — " + (decision.newTitle || original.title);
-
-        if (decision.action === 'group' && decision.subtasks && decision.subtasks.length > 0) {
-          var addedSubtitles = [];
-          decision.subtasks.forEach(function(subTitle) {
-            if (subTitle && subTitle.length < 40 && !subTitle.match(/^[a-zA-Z0-9_-]{15,}$/)) {
-              Tasks.Tasks.insert({ title: subTitle }, targetId, { parent: newParentTask.id });
-              addedSubtitles.push(subTitle);
-              Utilities.sleep(150); // API Rate Limit Protection
-            }
-          });
-          logMessage = "🖇️ Grouped [" + decision.targetList + "] — " + (decision.newTitle || original.title) + " (Added: " + addedSubtitles.join(", ") + ")";
-        }
-
-        detailLogs.push(logMessage);
-        processedCount++;
-        
-      } catch (loopErr) {
-        detailLogs.push("❌ Skipped task due to error: " + original.title);
-      }
-    }
-
-    props.setProperty('LAST_SYNC', new Date().toISOString());
-    return { status: "success", msg: "Agent processed " + processedCount + " items.", logs: detailLogs, flagged: flaggedItems };
-  } catch (e) { return { status: "error", msg: "Agent Engine Error: " + e.message }; }
-}
-
-function resolveFlaggedItem(taskId, listId, action) {
-  if (action === 'delete') {
-    try {
-      Tasks.Tasks.remove(listId, taskId);
-      return "🗑️ Deleted flagged item.";
-    } catch(e) {
-      return "⚠️ Could not delete (Likely a recurring task). Please delete manually.";
-    }
-  } else {
-    var t = Tasks.Tasks.get(listId, taskId);
-    t.notes = (t.notes || "") + "\n\n[AI_PROCESSED]";
-    Tasks.Tasks.update(t, listId, taskId);
-    return "✅ Kept flagged item.";
+    });
   }
-}
 
-function updateGlobalSettings(listName, country) {
-  var props = PropertiesService.getScriptProperties();
-  props.setProperty('INPUT_LIST_NAME', listName);
-  props.setProperty('COUNTRY_CODE', country);
-  return "Settings saved.";
-}
+  if (queue.length === 0) {
+    props.setProperty('LAST_SYNC', new Date().toISOString());
+    return { status: "success", msg: "All collections clean. No tasks queued.", logs: ["✔ Run completed: Collection containers are clear."] };
+  }
 
-function getSystemStats() {
-  var props = PropertiesService.getScriptProperties();
-  return { 
-    active: ScriptApp.getProjectTriggers().length > 0, 
-    lastSync: props.getProperty('LAST_SYNC') || 'Never',
-    inputList: props.getProperty('INPUT_LIST_NAME') || 'Brain Dump',
-    country: props.getProperty('COUNTRY_CODE') || 'GB',
-    scriptId: ScriptApp.getScriptId()
-  };
-}
+  var batch = queue.slice(0, 100);
+  var exactCategoryNames = taskLists.map(l => l.title).filter(title => normalizeStr(title) !== normalizeStr(inputListName));
 
-function stopAgent() { PropertiesService.getScriptProperties().setProperty('STOP_SIGNAL', 'true'); return "Stop signal sent."; }
+  var aiResults = getAiIntelligentTriage(batch, apiKey, exactCategoryNames, isGlobalMode);
+  var processedCount = 0;
 
-function setupWorkspace() {
-  var props = PropertiesService.getScriptProperties();
-  var inputListName = props.getProperty('INPUT_LIST_NAME') || "Brain Dump";
-  var existingLists = Tasks.Tasklists.list().items || [];
-  var existingNames = existingLists.map(function(l) { return l.title.toLowerCase(); });
-  var created = 0;
-  [inputListName, ...DEFAULT_CATEGORIES].forEach(function(cat) {
-    if (existingNames.indexOf(cat.toLowerCase()) === -1) { Tasks.Tasklists.insert({title: cat}); created++; }
+  aiResults.forEach(decision => {
+    var original = batch.find(q => q.id === decision.id);
+    if (!original) return;
+    
+    if (isGlobalMode && decision.action === 'move' && !decision.newNotes && (!decision.newTitle || decision.newTitle === original.title) && normalizeStr(decision.targetList) === normalizeStr(original.listName)) return;
+
+    try {
+      var normalizedTarget = normalizeStr(decision.targetList || original.listName);
+      if (normalizedTarget.match(/^[a-zA-Z0-9_-]{15,}$/)) { normalizedTarget = normalizeStr(original.listName); }
+      
+      var targetId = listMap[normalizedTarget];
+      if (!targetId) {
+        var newList = Tasks.Tasklists.insert({title: decision.targetList.trim()});
+        listMap[normalizedTarget] = newList.id;
+        targetId = newList.id;
+        runLog.push("📁 Initialized missing structure: [" + decision.targetList.trim() + "]");
+      }
+
+      var isValidDate = decision.dueDate && decision.dueDate.match(/^\d{4}-\d{2}-\d{2}$/);
+      var holiday = isValidDate ? checkHolidays(decision.dueDate, countryCode) : null;
+      if (holiday) runLog.push("⚠️ " + decision.dueDate + " overlaps with regional event: " + holiday);
+
+      var newTaskObj = {
+        title: decision.newTitle || original.title,
+        due: isValidDate ? decision.dueDate + "T10:00:00.000Z" : undefined,
+        notes: ((decision.newNotes || original.notes || "") + "\n\n[AI_PROCESSED]").trim()
+      };
+
+      Tasks.Tasks.insert(newTaskObj, targetId);
+      
+      try { Tasks.Tasks.remove(original.listId, original.id); } 
+      catch (removeErr) {
+        var t = Tasks.Tasks.get(original.listId, original.id);
+        t.notes = (t.notes || "") + "\n\n[AI_PROCESSED]";
+        Tasks.Tasks.update(t, original.listId, original.id);
+      }
+      
+      runLog.push("➡️ Successfully triaged task: \"" + original.title + "\" → [" + (decision.targetList || original.listName).trim() + "]");
+      processedCount++;
+    } catch(err) {
+      runLog.push("❌ Skipped task due to structural error: " + original.title);
+    }
   });
-  return "Workspace verified. " + created + " default lists added.";
+
+  props.setProperty('LAST_SYNC', new Date().toISOString());
+  return { status: "success", msg: "Triage operation finalized. Processed " + processedCount + " items.", logs: runLog };
 }
 
 function getAiIntelligentTriage(tasksArray, key, categories, isGlobalMode) {
   var url = "https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=" + key;
   var currentDate = new Date().toISOString();
   
-  var prompt = `You are an incredibly strict, literal task sorter.
-  Current Context Date: ${currentDate}
-  Existing Categories: [${categories.join(", ")}]. 
-  
-  CATEGORY GUIDELINES (READ CAREFULLY):
-  - Personal & Health: Strictly individual self-care, fitness (gym workouts), medical/health appointments, personal hobbies, and solo reading.
-  - Family & Home Admin: Household management, bills, utilities (internet/broadband setup, parking fines), kids' schedules (dance, basketball), major family milestones (weddings, family birthdays), and family vacations/packing.
-  - Professional & Career: Work tasks, career advancement, job searching, interviews, portfolio updates, and professional case studies/reports.
-  - Car Maintenance: Strictly vehicle-related tasks: services, tires, workshop bookings, and car insurance claims.
-  - Outreach & Social: Casual socializing, catching up with friends, returning non-urgent texts/calls, and booking casual outings (movies, spa days with friends). EXCLUDE major family events or professional networking.
-  
-  CRITICAL RULES:
-  1. NO WEIRD IDs: You are FORBIDDEN from outputting random backend ID strings. Use human-readable text only.
-  2. NO ROBOT TITLES: You MUST pick the most descriptive existing title from the input exactly as written.
-  3. TARGET LISTS MUST BE REAL: "targetList" MUST be a human-readable name from the Categories listed above.
-  4. STRICT JSON ONLY: Do NOT output Markdown formatting like \`\`\`json. Do NOT include conversational text. Output the raw JSON array and absolutely nothing else.
-  
-  ACTIONS:
-  - "group": Actively search for loose tasks that belong as sub-steps to a broader task in the batch. Set "newTitle" to the exact title of the main task. Put the related sub-steps into the "subtasks" array.
-  - "move": Move a single task. Use this to SMART MERGE tasks with different words but the exact same meaning.
-  - "flag_duplicate": Flag obvious duplicates or tasks that you merged into a master task.
-  
-  Format strictly as JSON array:
-  [{"id": "id", "action": "move|group|flag_duplicate", "targetList": "...", "newTitle": "...", "newNotes": "...", "dueDate": "YYYY-MM-DD", "subtasks": ["..."], "flagReason": "..."}]`;
+  var prompt = "You are an incredibly strict, literal task sorter.\n" +
+  "Current Date: " + currentDate + "\n" +
+  "Available Folders: [" + categories.join(", ") + "].\n\n" +
+  "CRITICAL RULES:\n" +
+  "1. TARGET LISTS MUST BE REAL: 'targetList' MUST exactly match one of the Folders listed above.\n" +
+  "2. If a task is ambiguous (like 'buy nappies' or 'go for a run'), place it into the most logical operational folder (e.g., Family & Home Admin or Personal & Health). DO NOT skip it.\n" +
+  "3. STRICT JSON ONLY: Do NOT output Markdown formatting.\n\n" +
+  "Format strictly as JSON array:\n" +
+  '[{"id": "id", "action": "move", "targetList": "...", "newTitle": "...", "newNotes": "...", "dueDate": "YYYY-MM-DD"}]';
   
   if (isGlobalMode) {
-    prompt += "\n\nCRITICAL: You are in GLOBAL CLEAN-UP MODE. Aggressively scan for semantic duplicates and loose tasks that should be nested under a parent project across all tasks. ONLY return tasks if you are using action 'group', 'flag_duplicate', OR updating a master task via 'move'. Ignore perfectly fine single tasks.";
+    prompt += "\n\nCRITICAL: GLOBAL CLEAN-UP MODE. Identify duplicates. ONLY return tasks if you are updating a master task via 'move'. Ignore perfectly fine single tasks.";
   }
   
   prompt += "\n\nTasks: " + JSON.stringify(tasksArray);
   
   try {
     var res = UrlFetchApp.fetch(url, { "method": "post", "contentType": "application/json", "payload": JSON.stringify({ "contents": [{ "parts": [{ "text": prompt }] }] }) });
-    
-    // Parse the raw response from Gemini
     var rawText = JSON.parse(res.getContentText()).candidates[0].content.parts[0].text;
     
-    // STRIPPER: Remove any accidental markdown backticks just in case
-    rawText = rawText.replace(/```json/gi, '').replace(/```/gi, '').trim();
-    
-    // BOUNDARY FINDER: Force it to only read between the first '[' and last ']'
     var firstBracket = rawText.indexOf('[');
     var lastBracket = rawText.lastIndexOf(']');
+    if (firstBracket === -1 || lastBracket === -1) return [];
     
-    if (firstBracket === -1 || lastBracket === -1) {
-      throw new Error("AI failed to generate a JSON array.");
-    }
-    
-    var cleanJsonString = rawText.substring(firstBracket, lastBracket + 1);
-    
-    return JSON.parse(cleanJsonString);
-    
-  } catch(e) {
-    throw new Error(e.message);
-  }
+    var cleanJson = rawText.substring(firstBracket, lastBracket + 1);
+    return JSON.parse(cleanJson);
+  } catch(e) { return []; }
 }
-
-function toggleAutomation(enable) {
-  ScriptApp.getProjectTriggers().forEach(function(t) { ScriptApp.deleteTrigger(t); });
-  if (enable) { ScriptApp.newTrigger('runAiAgent').timeBased().everyHours(1).create(); return "Autopilot Enabled."; }
-  return "Autopilot Disabled.";
-}
-
-function resetAgentMemory() {
-  var taskLists = Tasks.Tasklists.list().items || [];
-  taskLists.forEach(function(list) {
-    var tasks = Tasks.Tasks.list(list.id, {showHidden: false}).items;
-    if (tasks) {
-      tasks.forEach(function(t) {
-        if (t.notes && t.notes.indexOf("[AI_PROCESSED]") !== -1) {
-          t.notes = t.notes.replace("[AI_PROCESSED]", "").trim();
-          Tasks.Tasks.update(t, list.id, t.id);
-        }
-      });
-    }
-  });
-  PropertiesService.getScriptProperties().deleteProperty('LAST_SYNC');
-  return "Memory cleared.";
-}
-
-function factoryReset() { toggleAutomation(false); resetAgentMemory(); return "System Reset."; }
