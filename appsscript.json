@@ -1,17 +1,27 @@
 {
   "timeZone": "Europe/Berlin",
   "dependencies": {
-    "enabledAdvancedServices": [{
-      "userSymbol": "Tasks",
-      "serviceId": "tasks",
-      "version": "v1"
-    }]
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Tasks",
+        "serviceId": "tasks",
+        "version": "v1"
+      }
+    ]
   },
   "webapp": {
-    "access": "MYSELF",
-    "executeAs": "USER_DEPLOYING"
+    "executeAs": "USER_DEPLOYING",
+    "access": "ANYONE_ANONYMOUS"
   },
-  "oauthScopes": ["https://www.googleapis.com/auth/tasks", "https://www.googleapis.com/auth/calendar.readonly", "https://www.googleapis.com/auth/script.external_request", "https://www.googleapis.com/auth/script.scriptapp"],
-  "urlFetchWhitelist": ["https://generativelanguage.googleapis.com/"],
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/script.external_request",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/script.send_mail"
+  ],
+  "urlFetchWhitelist": [
+    "https://generativelanguage.googleapis.com/"
+  ],
   "runtimeVersion": "V8"
 }
