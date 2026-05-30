@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="color-scheme: dark;">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,8 +12,20 @@
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
+    :root { color-scheme: dark; } 
     body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; } 
     .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Ensure native date and time input text is visible on all mobile browsers */
+    input[type="date"], input[type="time"] {
+      color: #a1a1aa; /* text-zinc-400 */
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.5;
+      cursor: pointer;
+    }
   </style>
   <script>tailwind.config = { darkMode: 'class', theme: { extend: {} } }</script>
 </head>
@@ -54,6 +66,11 @@
                   <Icon name="calendar" className="w-3 h-3 opacity-80" /> {date}
                 </span>
               )}
+              {task.startTime && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#1a1a1c] border border-white/5 text-zinc-300 font-mono text-[9px] uppercase tracking-wider rounded-md">
+                  <Icon name="clock" className="w-3 h-3 opacity-70" /> {task.startTime} {task.endTime ? `- ${task.endTime}` : ''}
+                </span>
+              )}
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#0a0a0b] border border-white/5 text-zinc-400 font-mono text-[9px] uppercase tracking-wider rounded-md">
                 <Icon name="user" className="w-3 h-3 opacity-70" /> Added by {task.addedBy.toUpperCase()}
               </span>
@@ -63,6 +80,13 @@
                 </span>
               )}
             </div>
+            
+            {!task.done && task.clashWarning && (
+              <div className="mt-4 px-3.5 py-2.5 bg-red-950/30 border border-red-900/50 rounded-lg flex items-start gap-2.5 text-red-400/90">
+                <Icon name="alert-circle" className="w-4 h-4 shrink-0 mt-[2px]" />
+                <p className="text-[12px] font-medium leading-relaxed">{task.clashWarning}</p>
+              </div>
+            )}
           </div>
         </li>
       );
@@ -72,6 +96,8 @@
       const [tasks, setTasks] = useState([]);
       const [title, setTitle] = useState('');
       const [dueDate, setDueDate] = useState('');
+      const [startTime, setStartTime] = useState('');
+      const [endTime, setEndTime] = useState('');
       const [refreshing, setRefreshing] = useState(false);
       const [listName, setListName] = useState('🏠 Family & Home Admin');
 
@@ -92,25 +118,39 @@
         }).getGuestTasks();
       };
 
-      const getTodayString = () => {
-        const d = new Date();
-        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-      };
-
       const handleAdd = (e) => {
         e.preventDefault();
         if (!title.trim()) return;
         
         const taskTitle = title.trim();
-        // AUTO-DATING RULE: Default to today if left blank
-        const taskDate = dueDate || getTodayString();
+        const taskDate = dueDate;
         
-        setTitle(''); setDueDate('');
+        let finalStartTime = startTime;
+        let finalEndTime = endTime;
         
-        const tempTask = { id: 'temp-' + Date.now(), title: taskTitle, dueDate: taskDate, addedBy: CURRENT_GUEST_NAME, updated: new Date().toISOString(), done: false };
+        if (finalStartTime && !finalEndTime) {
+            let [hours, minutes] = finalStartTime.split(':').map(Number);
+            let d = new Date(2000, 0, 1, hours, minutes);
+            d.setMinutes(d.getMinutes() + 30);
+            finalEndTime = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+        
+        setTitle(''); setDueDate(''); setStartTime(''); setEndTime('');
+        
+        const tempTask = { 
+          id: 'temp-' + Date.now(), 
+          title: taskTitle, 
+          dueDate: taskDate ? taskDate : null,
+          startTime: finalStartTime || null,
+          endTime: finalEndTime || null,
+          addedBy: CURRENT_GUEST_NAME, 
+          updated: new Date().toISOString(), 
+          done: false,
+          clashWarning: null
+        };
+        
         setTasks(prev => [tempTask, ...prev]);
-        
-        google.script.run.addGuestTask(taskTitle, taskDate, CURRENT_GUEST_NAME);
+        google.script.run.addGuestTask(taskTitle, taskDate, finalStartTime, finalEndTime, CURRENT_GUEST_NAME);
       };
 
       const handleToggle = (id) => {
@@ -119,6 +159,18 @@
       };
 
       const active = tasks.filter(t => !t.done).sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return new Date(b.updated) - new Date(a.updated);
+        if (!a.dueDate) return 1; 
+        if (!b.dueDate) return -1;
+
+        if (a.dueDate < b.dueDate) return -1;
+        if (a.dueDate > b.dueDate) return 1;
+
+        const timeA = a.startTime || "24:00"; 
+        const timeB = b.startTime || "24:00";
+        if (timeA < timeB) return -1;
+        if (timeA > timeB) return 1;
+        
         return new Date(b.updated) - new Date(a.updated);
       });
       
@@ -148,20 +200,51 @@
               </div>
             </header>
 
-            <form onSubmit={handleAdd} className="rounded-2xl border border-white/5 bg-[#111113] p-5 md:p-6 mb-10">
-              <div className="flex items-center gap-2 mb-4 px-1">
-                <span className="text-lime-400 font-mono text-[14px] leading-none mb-[1px]">+</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-300">Add a New Task</span>
-              </div>
-              <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="What needs to be done?" className="w-full px-5 py-3.5 bg-[#0a0a0b] border border-white/5 rounded-xl text-[14px] font-medium focus:outline-none focus:border-lime-400/30 text-white placeholder:text-zinc-600 mb-3 shadow-inner" />
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <Icon name="calendar" className="w-4 h-4 text-zinc-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full pl-12 pr-4 py-3 text-[13px] font-mono bg-[#0a0a0b] border border-white/5 rounded-xl text-zinc-400 focus:outline-none focus:border-lime-400/30 uppercase" />
+            <form onSubmit={handleAdd} className="rounded-2xl border border-white/5 bg-[#111113] p-5 md:p-6 mb-10 flex flex-col gap-5">
+              
+              {/* Row 1: Task Input */}
+              <div className="flex flex-col gap-2">
+                <label className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-zinc-400 ml-1">Task</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lime-400 font-mono text-[14px] leading-none">+</span>
+                  <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Add a task or reminder" className="w-full pl-10 pr-5 py-3.5 bg-[#0a0a0b] border border-white/5 rounded-xl text-[14px] font-medium focus:outline-none focus:border-lime-400/30 text-white placeholder:text-zinc-600 shadow-inner" />
                 </div>
-                <button type="submit" disabled={!title.trim()} className="px-6 py-3 bg-[#1a1a1c] border border-white/5 text-zinc-400 font-mono font-bold rounded-xl text-[10px] uppercase tracking-wider hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all flex items-center gap-2">
-                  <span className="text-[14px] leading-none">+</span> Add
-                </button>
+              </div>
+              
+              {/* Row 2: Desktop inline, Mobile stacked */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                
+                <div className="md:col-span-4 flex flex-col gap-2">
+                  <label className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-zinc-400 ml-1">Date</label>
+                  <div className="relative">
+                    <Icon name="calendar" className="w-4 h-4 text-zinc-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="w-full pl-12 pr-4 py-3 text-[13px] font-mono bg-[#0a0a0b] border border-white/5 rounded-xl text-zinc-400 focus:outline-none focus:border-lime-400/30 uppercase" />
+                  </div>
+                </div>
+                
+                <div className="md:col-span-5 grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-zinc-400 ml-1">Start time</label>
+                    <div className="relative">
+                      <Icon name="clock" className="w-4 h-4 text-zinc-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full pl-10 pr-2 py-3 text-[13px] font-mono bg-[#0a0a0b] border border-white/5 rounded-xl text-zinc-400 focus:outline-none focus:border-lime-400/30" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] font-bold text-zinc-400 ml-1 truncate">End time (optional)</label>
+                    <div className="relative">
+                      <Icon name="clock" className="w-4 h-4 text-zinc-600 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full pl-10 pr-2 py-3 text-[13px] font-mono bg-[#0a0a0b] border border-white/5 rounded-xl text-zinc-400 focus:outline-none focus:border-lime-400/30" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-3">
+                  <button type="submit" disabled={!title.trim()} className="w-full py-3 bg-[#1a1a1c] border border-white/5 text-zinc-400 font-mono font-bold rounded-xl text-[10px] uppercase tracking-wider hover:bg-white/10 hover:text-white disabled:opacity-30 disabled:pointer-events-none transition-all flex justify-center items-center gap-2">
+                    Add Task
+                  </button>
+                </div>
+                
               </div>
             </form>
 
